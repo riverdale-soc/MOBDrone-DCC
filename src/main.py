@@ -5,34 +5,38 @@ from DCC_MissionBuilder import Mission, LocationGlobal
 
 
 """
-
+- Main DCC Application for simulation of response to MOB event in Gazebo environment
+Represents states:
+    
 """
 
 targetAlt = 30
 
-def main():
+    
+async def run():
+    drone = System()
     dcclisten = DCC_Listen()
     dcclisten.init_port()
     print("Listening for MOB Event")
     state, _, longitude, latitude, timestamp = dcclisten.listen()
+    # Start a connection to drone
+    await drone.connect(system_address="udp://:14540")
+    # Indicates ESP-NOW packet does not include GPS coordinates
     if longitude == 0 and latitude == 0:
         gps_arrived = False
     else:
         gps_arrived = True
     print("MOB String Received at: ", timestamp)
 
-    # Create Mission Object
-    mission = Mission(LocationGlobal(longitude, latitude, targetAlt), 30, 100, 160, 150*150)
-    mission.build_mission(longitude, latitude, targetAlt,
-                      Area=10*10,
-                      Cam_FOV=160,
-                      MAX_RANGE=150*150)
-    
+    home = drone.telemetry.home()
 
-async def run():
-    # Start a connection to the drone
-    drone = System()
-    await drone.connect(system_address="udp://:14540")
+    # Create Mission Object where LocationGlobal is a home coordinates with targetAlt as altitude
+    mission = Mission(LocationGlobal(home.long, home.lat, targetAlt), 30, 100, 160, 150*150)
+    mission.build_mission(longitude, latitude, targetAlt,
+                      Area=10*10,        # Area to search in meters 
+                      Cam_FOV=160,       # Camera Field of View
+                      MAX_RANGE=150*150)
+
 
     # Check if vehicle is armable
     async for is_armable in drone.telemetry.armed():
@@ -117,7 +121,6 @@ async def run():
         await drone.action.goto_location(*point)
 
     await asyncio.sleep(10)
-    
 
     await asyncio.gather(wait(), asyncio.sleep(5))
 
@@ -128,6 +131,3 @@ async def run():
 
 if __name__ == "__main__":
     asyncio.run(run())
-
-
-    
