@@ -115,6 +115,14 @@ async def run():
     await drone.action.set_maximum_speed(3)
     await drone.action.set_return_to_launch_altitude(targetAlt)
 
+    # Start Mission traversal to search for MOB
+    print("Starting mission")
+    location = mission.go_to_next()
+    while location is not None:
+        print("Going to: ", location)
+        await drone.action.goto_location(location.waypoint.lat, location.waypoint.long, targetAlt, 3)
+        location = mission.go_to_next()
+
     if gps_arrived:
         point = [longitude, latitude, targetAlt]
         print("Going to first point for MOB")
